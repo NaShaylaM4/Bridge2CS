@@ -2,7 +2,9 @@
 // API Helper Functions - Clean wrapper for all backend calls
 // =============================================================================
 
-const API_BASE = 'http://localhost:4000';
+// Use same-origin API base so deployed frontend calls the deployed backend host.
+// Local development still works because frontend and backend are served from the same app.
+const API_BASE = '';
 
 async function apiGet(endpoint) {
   const headers = { 'Content-Type': 'application/json' };

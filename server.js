@@ -194,6 +194,16 @@ function generateVerificationCode() {
 // Middleware
 app.use(express.json());
 app.use(cors());
+app.use(express.static(__dirname));
+
+// Frontend page routes (Render production + local direct navigation)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
 // =============================================================================
 // Database Initialization
