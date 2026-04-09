@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WSSU Bridge Recruitment | Admin Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script defer src="script.js"></script>
+</head>
+<body class="theme-wssu">
+  <header class="top-banner" role="banner">
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p>Recruitment metrics, applicant filtering, and campaign performance for Forsyth County.</p>
+        </div>
+        <div>
+          <button id="themeToggle" class="btn btn-secondary" style="margin-right:0.5rem;">Dark Mode</button>
+          <button id="logoutBtn" class="btn btn-secondary" style="display:none;">Logout</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="adminContent">
+    <!-- Login Section (shown by default, hidden after login) -->
+    <section id="loginSection" class="card" style="max-width:400px;margin:2rem auto;" aria-labelledby="login-title">
+      <h2 id="login-title">Admin Login</h2>
+      <p>Enter your credentials to access the dashboard.</p>
+      <form id="loginForm">
+        <label for="adminUsername">Username</label>
+        <input type="text" id="adminUsername" name="adminUsername" required />
+        
+        <label for="adminPassword">Password</label>
+        <input type="password" id="adminPassword" name="adminPassword" required />
+        
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+      <div class="auth-helper-actions">
+        <button type="button" id="showForgotPassword" class="btn btn-secondary">Forgot Password?</button>
+      </div>
+
+      <div id="forgotPasswordPanel" class="auth-panel" style="display:none;">
+        <h3>Request Reset Code</h3>
+        <form id="forgotPasswordForm">
+          <label for="forgotUsername">Username</label>
+          <input type="text" id="forgotUsername" name="forgotUsername" required />
+          <button type="submit" class="btn btn-primary">Send Reset Code</button>
+        </form>
+      </div>
+
+      <div id="resetPasswordPanel" class="auth-panel" style="display:none;">
+        <h3>Reset Password</h3>
+        <form id="resetPasswordForm">
+          <label for="resetUsername">Username</label>
+          <input type="text" id="resetUsername" name="resetUsername" required />
+
+          <label for="resetCode">Reset Code</label>
+          <input type="text" id="resetCode" name="resetCode" maxlength="6" required />
+
+          <label for="resetNewPassword">New Password</label>
+          <input type="password" id="resetNewPassword" name="resetNewPassword" minlength="8" required />
+
+          <button type="submit" class="btn btn-primary">Reset Password</button>
+        </form>
+      </div>
+      <p id="loginStatus" aria-live="polite"></p>
+    </section>
+
+    <!-- Dashboard Section (hidden by default, shown after login) -->
+    <section id="dashboardSection" style="display:none;">
+      <h3 id="welcomeAdmin" style="margin-bottom: 1rem;"></h3>
+      <section aria-labelledby="admin-metrics">
+        <h2 id="admin-metrics">Key Metrics</h2>
+        <p class="helper-note">Quick summary of applicant volume, eligibility, and conversion performance.</p>
+        <div class="grid cards">
+          <article class="card metric"><strong id="adminTotalApplicants">0</strong><span>Total Applicants</span></article>
+          <article class="card metric"><strong id="adminEligible">0</strong><span>Eligible Applicants</span></article>
+          <article class="card metric"><strong id="adminIncomplete">0</strong><span>Incomplete Applications</span></article>
+          <article class="card metric"><strong id="adminFirstGen">0</strong><span>First-Gen Applicants</span></article>
+          <article class="card metric"><strong id="adminCompletion">0%</strong><span>Application Conversion Rate</span></article>
+        </div>
+        <div class="grid cards">
+          <article class="card metric"><strong id="emailSent">0</strong><span>Email Sends</span></article>
+          <article class="card metric"><strong id="emailOpened">0</strong><span>Email Opens</span></article>
+          <article class="card metric"><strong id="emailClicked">0</strong><span>Email Clicks</span></article>
+          <article class="card metric"><strong id="smsSent">0</strong><span>SMS Sends</span></article>
+        </div>
+      </section>
+
+      <section aria-labelledby="enrollment-funnel">
+        <h2 id="enrollment-funnel">Enrollment Funnel</h2>
+        <p class="helper-note">Track how students move from submission through enrollment stages.</p>
+        <div class="grid cards">
+          <article class="card metric"><strong id="funnelSubmitted">0</strong><span>Submitted</span></article>
+          <article class="card metric"><strong id="funnelUnderReview">0</strong><span>Under Review</span></article>
+          <article class="card metric"><strong id="funnelAccepted">0</strong><span>Accepted</span></article>
+          <article class="card metric"><strong id="funnelEnrolled">0</strong><span>Enrolled</span></article>
+        </div>
+        <div class="grid cards">
+          <article class="card metric"><strong id="funnelReviewRate">0%</strong><span>Under Review / Submitted</span></article>
+          <article class="card metric"><strong id="funnelAcceptRate">0%</strong><span>Accepted / Under Review</span></article>
+          <article class="card metric"><strong id="funnelEnrollRate">0%</strong><span>Enrolled / Accepted</span></article>
+        </div>
+      </section>
+
+      <section aria-labelledby="email-engagement-performance">
+        <h2 id="email-engagement-performance">Email Engagement Performance</h2>
+        <div class="grid cards">
+          <article class="card metric"><strong id="perfOpenRate">0%</strong><span>Open Rate</span></article>
+          <article class="card metric"><strong id="perfClickRate">0%</strong><span>Click Rate</span></article>
+          <article class="card metric"><strong id="perfClickToOpenRate">0%</strong><span>Click-to-Open Rate</span></article>
+        </div>
+        <p class="helper-note">Open and click rates update from tracked email events.</p>
+      </section>
+
+      <section aria-labelledby="visual-analytics">
+        <h2 id="visual-analytics">Visual Analytics</h2>
+        <p class="helper-note">Charts provide a visual view of stage progress, engagement, and geography trends.</p>
+        <div class="grid cards">
+          <article class="card chart-card">
+            <h3>Application Stage Distribution</h3>
+            <canvas id="stageChart"></canvas>
+          </article>
+          <article class="card chart-card">
+            <h3>Engagement Analytics</h3>
+            <canvas id="engagementChart"></canvas>
+          </article>
+          <article class="card chart-card">
+            <h3>Applicant Geography (ZIP)</h3>
+            <canvas id="zipChart"></canvas>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="interest-analytics">
+        <h2 id="interest-analytics">Interest Area Breakdown</h2>
+        <p class="helper-note">Understand which interest areas are strongest among current applicants.</p>
+        <div class="grid cards interest-grid">
+          <article class="card metric interest-card"><strong id="interestComputerScience">0</strong><span>Computer Science</span></article>
+          <article class="card metric interest-card"><strong id="interestInformationTechnology">0</strong><span>Information Technology</span></article>
+          <article class="card metric interest-card"><strong id="interestAIML">0</strong><span>AI/ML</span></article>
+          <article class="card metric interest-card"><strong id="interestDataScience">0</strong><span>Data Science</span></article>
+          <article class="card metric interest-card"><strong id="interestEngineering">0</strong><span>Engineering</span></article>
+          <article class="card metric interest-card"><strong id="interestMathematics">0</strong><span>Mathematics</span></article>
+          <article class="card metric interest-card"><strong id="interestRobotics">0</strong><span>Robotics</span></article>
+        </div>
+        <article class="card chart-card">
+          <h3>Applicants by Interest Area</h3>
+          <canvas id="interestChart"></canvas>
+        </article>
+      </section>
+
+      <section aria-labelledby="applicant-filters">
+        <h2 id="applicant-filters">Applicant Filtering</h2>
+        <form id="filterForm" class="card filter-grid">
+          <div class="filter-group">
+            <label for="searchName">Name</label>
+            <input id="searchName" type="search" placeholder="Search name" />
+          </div>
+
+          <div class="filter-group">
+            <label for="filterZip">ZIP</label>
+            <input id="filterZip" type="text" maxlength="5" inputmode="numeric" />
+          </div>
+
+          <div class="filter-group">
+            <label for="filterInterest">Interest</label>
+            <select id="filterInterest"><option value="">All</option><option>Computer Science</option><option>Information Technology</option><option>Data Science</option><option>Engineering</option><option>Mathematics</option><option>Robotics</option><option>AI/ML</option></select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filterApplicationStatus">Application Status</label>
+            <select id="filterApplicationStatus">
+              <option value="">All</option>
+              <option value="incomplete">Incomplete Only</option>
+              <option value="submitted">Submitted Only</option>
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button type="submit" class="btn btn-secondary">Apply</button>
+            <button type="button" id="clearFilters" class="btn btn-secondary">Clear</button>
+          </div>
+        </form>
+        <p id="filterStatus"></p>
+      </section>
+
+      <section aria-labelledby="applicant-table">
+        <h2 id="applicant-table">Applicant List</h2>
+        <div class="form-inline" style="margin-bottom: 0.75rem;">
+          <button type="button" id="exportApplicantsCsv" class="btn btn-secondary">Export Applicants to CSV</button>
+        </div>
+        <p id="exportStatus" aria-live="polite"></p>
+        <div class="table-wrapper">
+          <table id="applicantTable">
+            <thead>
+              <tr>
+                <th>Name</th><th>Email</th><th>Phone</th><th>School</th><th>ZIP</th><th>First-Gen</th><th>Interests</th><th>Stage</th><th>Eligibility</th><th>Application Status</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="incomplete-follow-up">
+        <h2 id="incomplete-follow-up">Incomplete Applications Follow-Up</h2>
+        <div id="incompleteFollowUpPanel" class="card">
+          <p id="incompleteFollowUpCount">No incomplete applications right now.</p>
+          <div class="table-wrapper">
+            <table id="incompleteFollowUpTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Stage</th>
+                  <th>Last Reminder Sent</th>
+                  <th>Reminder Status</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Edit Applicant Modal -->
+      <div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+        <div style="background:#fff; margin:40px auto; padding:24px; border-radius:8px; max-width:600px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+          <h2 style="margin-top:0; color:#b20710;">Edit Applicant</h2>
+          <form id="editForm" style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label><strong>Name:</strong></label>
+              <input id="editName" type="text" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>Email:</strong></label>
+              <input id="editEmail" type="email" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>Phone:</strong></label>
+              <input id="editPhone" type="text" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>School:</strong></label>
+              <input id="editSchool" type="text" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>ZIP Code:</strong></label>
+              <input id="editZip" type="text" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>Graduation Year:</strong></label>
+              <input id="editGradYear" type="number" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;" />
+            </div>
+            <div>
+              <label><strong>First-Gen:</strong></label>
+              <select id="editFirstGen" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <option value="">-</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div>
+              <label><strong>Eligible (Forsyth County):</strong></label>
+              <select id="editEligible" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <option value="1">Yes</option>
+                <option value="0">No</option>
+              </select>
+            </div>
+            <div>
+              <label><strong>Application Status:</strong></label>
+              <select id="editApplicationStatus" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <option value="incomplete">Incomplete</option>
+                <option value="submitted">Submitted</option>
+              </select>
+            </div>
+            <div>
+              <label><strong>Notes:</strong></label>
+              <textarea id="editNote" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box; min-height:80px;" ></textarea>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+              <button id="editSaveBtn" type="button" class="btn btn-primary">Save Changes</button>
+              <button id="editCancelBtn" type="button" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <section aria-labelledby="admin-requests">
+        <h2 id="admin-requests">Student Stage Requests</h2>
+        <div id="requestPanel" class="card"></div>
+      </section>
+
+      <section aria-labelledby="geography-chart">
+        <h2 id="geography-chart">Geographic Visualization (ZIP)</h2>
+        <div id="geoViz" class="card"></div>
+        <p>Map highlights applicant volume by ZIP code (Forsyth County focused).</p>
+      </section>
+
+      <section aria-labelledby="communication-workflow">
+        <h2 id="communication-workflow">Communication Actions</h2>
+        <p class="helper-note">Use real communication tools to contact applicants and keep engagement data accurate.</p>
+        <div class="card form-inline">
+          <label for="campaignName">Campaign Name</label>
+          <input type="text" id="campaignName" placeholder="STEM Summer push" />
+          <label for="campaignMessage">Message</label>
+          <textarea id="campaignMessage" rows="2" placeholder="Customize offer and next steps"></textarea>
+          <button id="runCampaign" class="btn btn-primary">Send Campaign Emails</button>
+          <button id="sendIncompleteReminder" class="btn btn-secondary" type="button">Send Reminders to Incomplete Applications</button>
+        </div>
+        <p id="campaignResult" aria-live="polite"></p>
+        <p id="incompleteReminderStatus" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="admin-management">
+        <h2 id="admin-management">Admin User Management</h2>
+        <div class="card">
+          <h3>Create New Admin Account</h3>
+          <form id="createAdminForm" class="form-inline">
+            <label for="newAdminUsername">Username</label>
+            <input type="text" id="newAdminUsername" placeholder="New username" minlength="3" required />
+            <label for="newAdminEmail">Email</label>
+            <input type="email" id="newAdminEmail" placeholder="admin@wssu.edu" required />
+            <label for="newAdminPassword">Password</label>
+            <input type="password" id="newAdminPassword" placeholder="New password" minlength="5" required />
+            <button type="submit" class="btn btn-primary">Create Admin</button>
+          </form>
+          <p id="createAdminStatus" aria-live="polite"></p>
+        </div>
+
+        <div class="card">
+          <h3>Current Admin Accounts</h3>
+          <table id="adminUsersTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <p id="adminListStatus"></p>
+        </div>
+      </section>
+
+      <section aria-labelledby="access-links">
+        <h2 id="access-links">Quick Actions</h2>
+        <div class="card">
+          <a href="index.html" class="btn btn-primary">Back to Student Portal</a>
+          <button id="resetData" class="btn btn-danger">Reset All Data (testing only)</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container"><small>WSSU Bridge Recruitment | Admin Analytics</small></div>
+  </footer>
+</body>
+</html>
