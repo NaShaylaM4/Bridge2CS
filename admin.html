@@ -356,6 +356,44 @@
           <button id="resetData" class="btn btn-danger">Reset All Data (testing only)</button>
         </div>
       </section>
+
+      <section aria-labelledby="nc-analytics">
+        <h2 id="nc-analytics">North Carolina CSV Analytics (R)</h2>
+        <p class="helper-note">Upload a CSV file for R-based analysis of North Carolina applicant data.</p>
+        <div class="card">
+          <div class="form-inline">
+            <label for="ncCsvFile">Select CSV File</label>
+            <input type="file" id="ncCsvFile" accept=".csv" />
+            <button id="uploadNcCsvBtn" class="btn btn-secondary">Upload CSV</button>
+            <button id="runNcAnalysisBtn" class="btn btn-primary">Run R Analysis</button>
+            <button id="downloadNcCsvBtn" class="btn btn-secondary">Download Filtered CSV</button>
+            <button id="downloadNcJsonBtn" class="btn btn-secondary">Download JSON Summary</button>
+          </div>
+          <p id="ncAnalysisStatus" aria-live="polite"></p>
+          <div id="ncAnalysisResults" style="display:none;">
+            <div class="grid cards">
+              <article class="card metric">
+                <strong id="ncTotalRecords">0</strong>
+                <span>Total Records</span>
+              </article>
+            </div>
+            <div class="grid cards">
+              <article class="card">
+                <h3>Cities Breakdown</h3>
+                <div id="ncCitiesList"></div>
+              </article>
+              <article class="card">
+                <h3>First-Gen Breakdown</h3>
+                <div id="ncFirstGenList"></div>
+              </article>
+              <article class="card">
+                <h3>Interests Breakdown</h3>
+                <div id="ncInterestsList"></div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
   </main>
 

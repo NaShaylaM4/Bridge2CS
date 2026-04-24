@@ -10,6 +10,10 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { sendEmail } = require('./emailService');
 
+const fs = require('fs');
+const { execFile } = require('child_process');
+const multer = require('multer');
+
 // =============================================================================
 // Configuration
 // =============================================================================
@@ -18,6 +22,16 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const DB_PATH = path.join(__dirname, 'bridge-recruitment.db');
 const SALT_ROUNDS = 10;
+
+// =============================================================================
+// R Analysis Configuration
+// =============================================================================
+
+const upload = multer({ dest: path.join(__dirname, 'uploads') });
+const R_SCRIPT_PATH = path.join(__dirname, 'nc_analysis.R');
+const R_OUTPUT_DIR = path.join(__dirname, 'output');
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const RSCRIPT_BIN = process.env.RSCRIPT_BIN || 'C:\\Program Files\\R\\R-4.5.1\\bin\\Rscript.exe';
 
 async function sendReminderEmail(applicant) {
   const stageLabel = applicant.stage || 'submitted';
@@ -315,6 +329,14 @@ function initializeDatabase() {
 // Initialize on startup
 initializeDatabase();
 
+// Ensure uploads and output directories exist
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+if (!fs.existsSync(R_OUTPUT_DIR)) {
+  fs.mkdirSync(R_OUTPUT_DIR, { recursive: true });
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
@@ -459,6 +481,26 @@ setInterval(() => {
 function requireAdminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  const session = adminSessions.get(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  // Extend session on activity
+  session.expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+  req.adminSession = session;
+  next();
+}
+
+// Middleware to check admin authentication (Bearer or query token)
+function requireAdminAuthOrQueryToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : req.query.token;
 
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
@@ -750,7 +792,7 @@ app.put('/api/admin-users/:id', requireAdminAuth, async (req, res) => {
     const admin = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(id);
     if (!admin) {
       return res.status(404).json({ error: 'Admin user not found' });
-    }
+    }    
 
     if (normalizedEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1623,6 +1665,96 @@ app.post('/api/sendgrid/events', (req, res) => {
     console.error('POST /api/sendgrid/events error:', error);
     res.status(500).json({ error: 'Failed to process SendGrid events' });
   }
+});
+
+// =============================================================================
+// Routes - Admin R Analysis
+// =============================================================================
+
+app.post('/api/admin-r/upload', requireAdminAuth, upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (path.extname(req.file.originalname).toLowerCase() !== '.csv') {
+      return res.status(400).json({ error: 'Only CSV files are allowed' });
+    }
+
+    const targetPath = path.join(UPLOADS_DIR, 'nc_input.csv');
+    fs.renameSync(req.file.path, targetPath);
+
+    res.json({ success: true, message: 'File uploaded successfully' });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+app.post('/api/admin-r/run', requireAdminAuth, (req, res) => {
+  const inputFile = path.join(UPLOADS_DIR, 'nc_input.csv');
+
+  if (!fs.existsSync(inputFile)) {
+    return res.status(400).json({ error: 'Input file not found. Please upload a CSV first.' });
+  }
+
+  execFile(RSCRIPT_BIN, [R_SCRIPT_PATH, inputFile], { cwd: __dirname }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('R script error:', error);
+      return res.status(500).json({ error: 'R script execution failed', details: error.message });
+    }
+
+    const summaryFile = path.join(R_OUTPUT_DIR, 'nc_summary.json');
+    const filteredFile = path.join(R_OUTPUT_DIR, 'nc_filtered.csv');
+
+    if (!fs.existsSync(summaryFile) || !fs.existsSync(filteredFile)) {
+      return res.status(500).json({ error: 'R script did not produce expected output files' });
+    }
+
+    try {
+      const summaryData = JSON.parse(fs.readFileSync(summaryFile, 'utf8'));
+      res.json({ success: true, summary: summaryData });
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      res.status(500).json({ error: 'Failed to parse summary data' });
+    }
+  });
+});
+
+app.get('/api/admin-r/results', requireAdminAuth, (req, res) => {
+  const summaryFile = path.join(R_OUTPUT_DIR, 'nc_summary.json');
+
+  if (!fs.existsSync(summaryFile)) {
+    return res.status(404).json({ error: 'Summary file not found' });
+  }
+
+  try {
+    const summaryData = JSON.parse(fs.readFileSync(summaryFile, 'utf8'));
+    res.json(summaryData);
+  } catch (error) {
+    console.error('Read summary error:', error);
+    res.status(500).json({ error: 'Failed to read summary data' });
+  }
+});
+
+app.get('/api/admin-r/download/csv', requireAdminAuthOrQueryToken, (req, res) => {
+  const filePath = path.join(R_OUTPUT_DIR, 'nc_filtered.csv');
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Filtered CSV file not found' });
+  }
+
+  res.download(filePath, 'nc_filtered.csv');
+});
+
+app.get('/api/admin-r/download/json', requireAdminAuthOrQueryToken, (req, res) => {
+  const filePath = path.join(R_OUTPUT_DIR, 'nc_summary.json');
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Summary JSON file not found' });
+  }
+
+  res.download(filePath, 'nc_summary.json');
 });
 
 // =============================================================================

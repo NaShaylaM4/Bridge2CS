@@ -1533,18 +1533,24 @@ function setupLoginForm() {
     // Call backend login API
     const result = await apiPost('/api/login', { username, password });
     
-    if (result && result.success) {
-      // Store token and username
-      setAdminSession(result.token, result.username);
-      showDashboard();
-      updateWelcomeMessage(result.username);
-      await loadAndRenderAdminDashboard();
-      setupDashboardHandlers();
-      
-      if (loginStatus) {
-        loginStatus.textContent = '';
-      }
-    } else {
+   if (result && result.success) {
+  // Store token and username
+  setAdminSession(result.token, result.username);
+  showDashboard();
+  updateWelcomeMessage(result.username);
+
+  await loadAndRenderAdminDashboard();
+  await renderAdminUsers();
+
+  setupDashboardHandlers();
+  setupEditModalHandlers();
+  setupAdminManagement();
+  setupNcAnalyticsHandlers();
+
+  if (loginStatus) {
+    loginStatus.textContent = '';
+  }
+} else {
       // Show specific error message from backend
       const errorMsg = result && result.error ? result.error : 'Login failed. Please try again.';
       if (loginStatus) {
@@ -1746,6 +1752,7 @@ async function initAdmin() {
   setupDashboardHandlers();
   setupEditModalHandlers(); // Setup edit modal handlers
   setupAdminManagement(); // Setup admin management handlers
+  setupNcAnalyticsHandlers(); // Setup NC analytics handlers
 }
 
 // =============================================================================
@@ -1782,7 +1789,9 @@ function closeEditModal() {
 // Setup modal event listeners
 function setupEditModalHandlers() {
   const editModal = document.getElementById('editModal');
-  if (!editModal) return; // Modal not on this page
+  if (!editModal) return;
+  if (editModal.dataset.bound === '1') return;
+  editModal.dataset.bound = '1';
 
   const saveBtn = document.getElementById('editSaveBtn');
   const cancelBtn = document.getElementById('editCancelBtn');
@@ -1836,6 +1845,9 @@ function setupEditModalHandlers() {
 
 function setupDashboardHandlers() {
   const filterForm = document.getElementById('filterForm');
+if (!filterForm) return;
+if (filterForm.dataset.bound === '1') return;
+filterForm.dataset.bound = '1';
   if (filterForm) {
     filterForm.addEventListener('submit', async event => {
       event.preventDefault();
@@ -2099,8 +2111,10 @@ function setupAdminManagement() {
   const createAdminForm = document.getElementById('createAdminForm');
   const createAdminStatus = document.getElementById('createAdminStatus');
   
-  if (!createAdminForm) return;
-  
+if (!createAdminForm) return;
+if (createAdminForm.dataset.bound === '1') return;
+createAdminForm.dataset.bound = '1';
+
   createAdminForm.addEventListener('submit', async event => {
     event.preventDefault();
     
@@ -2150,6 +2164,155 @@ function setupAdminManagement() {
       createAdminStatus.style.color = 'crimson';
     }
   });
+}
+
+// =============================================================================
+// NC Analytics (R) - Admin Dashboard
+// =============================================================================
+
+async function uploadNcCsvFile() {
+  const fileInput = document.getElementById('ncCsvFile');
+  const statusEl = document.getElementById('ncAnalysisStatus');
+
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+    if (statusEl) {
+      statusEl.textContent = 'Please choose a CSV file first.';
+      statusEl.style.color = 'crimson';
+    }
+    return;
+  }
+
+  const token = getAdminToken();
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  try {
+    const response = await fetch('/api/admin-r/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || 'Upload failed');
+    }
+
+    if (statusEl) {
+      statusEl.textContent = payload.message || 'CSV uploaded successfully.';
+      statusEl.style.color = 'green';
+    }
+  } catch (error) {
+    console.error('NC CSV upload failed:', error);
+    if (statusEl) {
+      statusEl.textContent = error.message || 'Failed to upload CSV.';
+      statusEl.style.color = 'crimson';
+    }
+  }
+}
+
+function renderNamedCounts(containerId, obj) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const entries = Object.entries(obj || {});
+  if (!entries.length) {
+    el.innerHTML = '<p>No data available.</p>';
+    return;
+  }
+
+  el.innerHTML = entries
+    .map(([key, value]) => `
+      <div class="bar-group">
+        <div class="bar-label">${key}: ${value}</div>
+      </div>
+    `)
+    .join('');
+}
+
+function renderNcAnalysisResults(summary) {
+  const resultsEl = document.getElementById('ncAnalysisResults');
+  const totalEl = document.getElementById('ncTotalRecords');
+
+  if (resultsEl) {
+    resultsEl.style.display = 'block';
+  }
+
+  if (totalEl) {
+    totalEl.textContent = summary.total_records || 0;
+  }
+
+  renderNamedCounts('ncCitiesList', summary.cities);
+  renderNamedCounts('ncFirstGenList', summary.first_gen);
+  renderNamedCounts('ncInterestsList', summary.interests);
+}
+
+async function runNcAnalysis() {
+  const statusEl = document.getElementById('ncAnalysisStatus');
+
+  if (statusEl) {
+    statusEl.textContent = 'Running R analysis...';
+    statusEl.style.color = 'blue';
+  }
+
+  const result = await apiPost('/api/admin-r/run', {});
+
+  if (result && result.success) {
+    renderNcAnalysisResults(result.summary);
+    if (statusEl) {
+      statusEl.textContent = 'R analysis completed successfully.';
+      statusEl.style.color = 'green';
+    }
+  } else {
+    if (statusEl) {
+      statusEl.textContent = (result && result.error) || 'R analysis failed.';
+      statusEl.style.color = 'crimson';
+    }
+  }
+}
+
+function downloadNcAnalysisFile(endpoint) {
+  const token = getAdminToken();
+  if (!token) {
+    handleUnauthorized();
+    return;
+  }
+
+  window.open(`${endpoint}?token=${encodeURIComponent(token)}`, '_blank');
+}
+
+function setupNcAnalyticsHandlers() {
+  const uploadBtn = document.getElementById('uploadNcCsvBtn');
+  const runBtn = document.getElementById('runNcAnalysisBtn');
+  const downloadCsvBtn = document.getElementById('downloadNcCsvBtn');
+  const downloadJsonBtn = document.getElementById('downloadNcJsonBtn');
+
+  if (uploadBtn && uploadBtn.dataset.bound !== '1') {
+    uploadBtn.dataset.bound = '1';
+    uploadBtn.addEventListener('click', uploadNcCsvFile);
+  }
+
+  if (runBtn && runBtn.dataset.bound !== '1') {
+    runBtn.dataset.bound = '1';
+    runBtn.addEventListener('click', runNcAnalysis);
+  }
+
+  if (downloadCsvBtn && downloadCsvBtn.dataset.bound !== '1') {
+    downloadCsvBtn.dataset.bound = '1';
+    downloadCsvBtn.addEventListener('click', () => {
+      downloadNcAnalysisFile('/api/admin-r/download/csv');
+    });
+  }
+
+  if (downloadJsonBtn && downloadJsonBtn.dataset.bound !== '1') {
+    downloadJsonBtn.dataset.bound = '1';
+    downloadJsonBtn.addEventListener('click', () => {
+      downloadNcAnalysisFile('/api/admin-r/download/json');
+    });
+  }
 }
 
 // =============================================================================
