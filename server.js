@@ -31,7 +31,7 @@ const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const R_SCRIPT_PATH = path.join(__dirname, 'nc_analysis.R');
 const R_OUTPUT_DIR = path.join(__dirname, 'output');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const RSCRIPT_BIN = process.env.RSCRIPT_BIN || 'C:\\Program Files\\R\\R-4.5.1\\bin\\Rscript.exe';
+const RSCRIPT_BIN = process.env.RSCRIPT_BIN || 'Rscript';
 
 async function sendReminderEmail(applicant) {
   const stageLabel = applicant.stage || 'submitted';
